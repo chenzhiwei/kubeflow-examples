@@ -8,56 +8,95 @@ Before we get started there a few requirements.
 
 ### Kubernetes Cluster Environment
 
-Your cluster must:
+* ICP v3.1.0/v3.1.1
+* Kubernetes v1.11.1/v1.11.3
 
-- Be at least version 1.9
-- Have access to an S3-compatible object store ([Amazon S3](https://aws.amazon.com/s3/), [Google Storage](https://cloud.google.com/storage/docs/interoperability), [Minio](https://www.minio.io/kubernetes.html))
-- Contain 3 nodes of at least 8 cores and 16 GB of RAM.
+## Setup Minio
 
-If using GKE, the following will provision a cluster with the required features:
-
-```
-export CLOUDSDK_CONTAINER_USE_CLIENT_CERTIFICATE=True
-gcloud alpha container clusters create ${USER} --enable-kubernetes-alpha --machine-type=n1-standard-8 --num-nodes=3 --disk-size=200 --zone=us-west1-a --cluster-version=1.9.3-gke.0 --image-type=UBUNTU
-```
-
-If using Azure, the following will provision a cluster with the required features, [using the az cli](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest):
+### Deploy Minio
 
 ```
-# Create a resource group
-az group create -n kubeflowrg -l eastus
-# Deploy the cluster
-az aks create -n kubeflowaks -g kubeflowrg -l eastus -k 1.9.6 -c 3 -s Standard_NC6
-# Authentication into the cluster
-az aks get-credentials -n kubeflowaks -g kubeflowrg
+docker run --name=minio --net=host -d -v /var/lib/minio:/data minio/minio:RELEASE.2018-10-25T01-27-03Z server /data
 ```
 
-NOTE: You must be a Kubernetes admin to follow this guide. If you are not an admin, please contact your local cluster administrator for a client cert, or credentials to pass into the following commands:
+### Get Minio key and secret
 
 ```
-$ kubectl config set-credentials <username> --username=<admin_username> --password=<admin_password>
-$ kubectl config set-context <context_name> --cluster=<cluster_name> --user=<username> --namespace=<namespace>
-$ kubectl config use-context <context_name>
+cat /var/lib/minio/.minio.sys/config/config.json  | head
+
+{
+	"version": "31",
+	"credential": {
+		"accessKey": "M99ZBO148UJTJQCR2ZOY",
+		"secretKey": "yLb_m23bBmXA8f3gkefP-85HuBKjQ0A9OzdhR8SI",
+		"expiration": "1970-01-01T00:00:00Z",
+		"status": "enabled"
+	},
+	"region": "",
+	"worm": "off",
 ```
 
-### Local Setup
+### Create Minio bucket
 
-You also need the following command line tools:
+Open Minio dashbaord in browser: http://minio-host:9000
 
-- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-- [argo](https://github.com/argoproj/argo/blob/master/demo.md#1-download-argo)
-- [ksonnet](https://ksonnet.io/#get-started)
+Create bucket: `mnist-model`
 
-To run the client at the end of the example, you must have [requirements.txt](requirements.txt) intalled in your active python environment.
 
-```
-pip install -r requirements.txt
-```
-
-NOTE: These instructions rely on Github, and may cause issues if behind a firewall with many Github users. Make sure you [generate and export this token](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/):
+## Download argo
 
 ```
-export GITHUB_TOKEN=xxxxxxxx
+curl -sSL -o /usr/local/bin/argo https://github.com/argoproj/argo/releases/download/v2.2.1/argo-linux-amd64
+chmod +x /usr/local/bin/argo
+```
+
+## Create tf service account
+
+```
+kubectl -n kubeflow apply -f tf-user.yaml
+```
+
+## Create secret for workflow
+
+```
+export NAMESPACE=kubeflow
+
+export S3_ENDPOINT=9.30.218.76:9000
+export AWS_ENDPOINT_URL=http://${S3_ENDPOINT}
+export AWS_ACCESS_KEY_ID=M99ZBO148UJTJQCR2ZOY
+export AWS_SECRET_ACCESS_KEY=yLb_m23bBmXA8f3gkefP-85HuBKjQ0A9OzdhR8SI
+export AWS_REGION=us-west-2
+export BUCKET_NAME=mnist-model
+export S3_USE_HTTPS=0
+export S3_VERIFY_SSL=0
+
+kubectl -n ${NAMESPACE} create secret generic aws-creds --from-literal=awsAccessKeyID=${AWS_ACCESS_KEY_ID} \
+ --from-literal=awsSecretAccessKey=${AWS_SECRET_ACCESS_KEY}
+```
+
+## Submit training workflow
+
+```
+export S3_DATA_URL=s3://${BUCKET_NAME}/data/mnist/
+export S3_TRAIN_BASE_URL=s3://${BUCKET_NAME}/models
+export JOB_NAME=myjob-$(uuidgen  | cut -c -5 | tr '[:upper:]' '[:lower:]')
+export TF_MODEL_IMAGE=siji/mnist-model:v1.0.0
+export TF_WORKER=3
+export MODEL_TRAIN_STEPS=200
+
+argo submit model-train.yaml -n ${NAMESPACE} --serviceaccount tf-user \
+    -p aws-endpoint-url=${AWS_ENDPOINT_URL} \
+    -p s3-endpoint=${S3_ENDPOINT} \
+    -p aws-region=${AWS_REGION} \
+    -p tf-model-image=${TF_MODEL_IMAGE} \
+    -p s3-data-url=${S3_DATA_URL} \
+    -p s3-train-base-url=${S3_TRAIN_BASE_URL} \
+    -p job-name=${JOB_NAME} \
+    -p tf-worker=${TF_WORKER} \
+    -p model-train-steps=${MODEL_TRAIN_STEPS} \
+    -p s3-use-https=${S3_USE_HTTPS} \
+    -p s3-verify-ssl=${S3_VERIFY_SSL} \
+    -p namespace=${NAMESPACE}
 ```
 
 ## Modifying existing examples
@@ -75,17 +114,6 @@ Basically, we must:
 1. Define serving signatures for model serving.
 
 The resulting model is [model.py](model.py).
-
-### Build and push model image.
-
-With our code ready, we will now build/push the docker image.
-
-```
-DOCKER_BASE_URL=docker.io/elsonrodriguez # Put your docker registry here
-docker build . --no-cache  -f Dockerfile.model -t ${DOCKER_BASE_URL}/mytfmodel:1.7
-
-docker push ${DOCKER_BASE_URL}/mytfmodel:1.7
-```
 
 ## Preparing your Kubernetes Cluster
 
@@ -252,12 +280,20 @@ Tensorboard can now be accessed at [http://127.0.0.1:6006](http://127.0.0.1:6006
 
 ## Using Tensorflow serving
 
+### Install client requirements
+
+```
+apt install python-pip python-setuptools --no-install-recommends
+pip install -r requirements.txt
+```
+
+### Submit and query result
+
 By default the workflow deploys our model via Tensorflow Serving. Included in this example is a client that can query your model and provide results:
 
 ```
-POD_NAME=$(kubectl get pod -l=app=mnist-${JOB_NAME} -o jsonpath='{.items[0].metadata.name}')
-kubectl port-forward ${POD_NAME} 9000:9000 &
-TF_MNIST_IMAGE_PATH=data/7.png python mnist_client.py
+SERVICE_IP=$(kubectl -n kubeflow get service -l app=mnist-${JOB_NAME} -o jsonpath='{.items[0].spec.clusterIP}')
+TF_MODEL_SERVER_HOST=$SERVICE_IP TF_MNIST_IMAGE_PATH=data/7.png python mnist_client.py
 ```
 
 This should result in output similar to this, depending on how well your model was trained:

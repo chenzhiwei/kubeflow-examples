@@ -15,13 +15,13 @@ spec:
     - name: tf-ps # number of tf parameter servers
       value: 2
     - name: tf-model-image
-      value: elsonrodriguez/mytfmodel:1.7
+      value: siji/mnist-model:v1.0.0
     - name: tf-serving-image #FIXME this image is a mirror of a private kubeflow-ci image, once we're building images swap this out. https://github.com/kubeflow/kubeflow/blob/dcf4adfe2dd1cec243647f3dd05d7c26246fddb1/components/k8s-model-server/images/Dockerfile.cpu
       value: elsonrodriguez/model-server:1.6
     - name: tf-tensorboard-image
       value: tensorflow/tensorflow:1.7.0
     - name: ks-image
-      value: elsonrodriguez/ksonnet:0.10.1
+      value: siji/ksonnet:v0.13.0
     - name: model-name
       value: mnist
     - name: model-hidden-units
