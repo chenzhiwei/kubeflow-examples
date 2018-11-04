@@ -6,12 +6,30 @@ This example guides you through the process of taking an example model, modifyin
 
 Before we get started there a few requirements.
 
-### Kubernetes Cluster Environment
+## 1.Kubernetes Cluster Environment
 
 * ICP v3.1.0/v3.1.1
 * Kubernetes v1.11.1/v1.11.3
 
-## Setup Minio
+## 2.Setup Kubeflow
+
+### Download ksonnet
+
+```
+curl -fksSL https://github.com/ksonnet/ksonnet/releases/download/v0.13.0/ks_0.13.0_linux_amd64.tar.gz | tar --strip-components=1 -xvz -C /usr/local/bin/ ks_0.13.0_linux_amd64/ks
+```
+
+### Install kubeflow
+
+```
+git clone -b v0.3.2 https://github.com/kubeflow/kubeflow
+./kubeflow/scripts/kfctl.sh init kf-app --platform none
+cd kf-app
+../kubeflow/scripts/kfctl.sh generate k8s
+../kubeflow/scripts/kfctl.sh apply k8s
+```
+
+## 3.Setup Minio
 
 ### Deploy Minio
 
