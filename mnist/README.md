@@ -251,9 +251,10 @@ Change the `ambassador` service type to `NodePort`, then access JupyterHub throg
 
 ```
 kubectl -n kubeflow patch service ambassador -p '{"spec": {"type": "NodePort"}}'
+kubectl -n kubeflow get service ambassador
 ```
 
-Use any username and password to login, such as `admin/admin`.
+Then you will find the NodePort and access it by NodePort, use any username and password to login, such as `admin/admin`.
 
 Create a PV in order to bring up a Jupyter NoteBook:
 
