@@ -56,6 +56,12 @@ cat /var/lib/minio/.minio.sys/config/config.json  | head
 
 ### Create Minio bucket
 
+```
+mkdir /var/lib/minio/tfmnist
+```
+
+**OR**
+
 Open Minio dashbaord in browser: http://minio-host:9000
 
 Create bucket: `tfmnist`
@@ -122,11 +128,11 @@ Your training workflow should now be executing.
 You can verify and keep track of your workflow using the argo commands:
 
 ```
-$ argo list
+$ argo -n kubeflow list
 NAME                STATUS    AGE   DURATION
 tf-workflow-h7hwh   Running   1h    1h
 
-$ argo get tf-workflow-h7hwh
+$ argo -n kubeflow get tf-workflow-h7hwh
 ```
 
 After the STATUS to `Succeeded`, then you can use it.
@@ -224,24 +230,48 @@ Your model says the above number is... 7!
 You can also omit `TF_MNIST_IMAGE_PATH`, and the client will pick a random number from the mnist test data. Run it repeatedly and see how your model fares!
 
 
+## 9.Bring JupyterHub up
+
+The jupyterhub is `tf-hub` statefulset under kubeflow namespace.
+
+Change the `tf-hub-lb` service type to NodePort, then you can access it jupyterhub throw NodePort.
+
+```
+kubectl -n kubeflow patch service tf-hub-lb -p '{"spec": {"type": "NodePort"}}'
+kubectl -n kubeflow get service tf-hub-lb
+```
+
+The default username and password are both `admin`.
+
+Create a PV in order to bring up a Jupyter NoteBook:
+
+```
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jupyter-pv
+spec:
+  capacity:
+    storage: 40Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  # storageClassName: pets
+  local:
+    path: /var/pv/jupyter
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - 172.16.183.209
+```
+
+
 <hr>
-
-## Modifying existing examples
-
-Many examples online use models that are unconfigurable, or don't work well in distributed mode. We will modify one of these [examples](https://github.com/tensorflow/tensorflow/blob/9a24e8acfcd8c9046e1abaac9dbf5e146186f4c2/tensorflow/examples/learn/mnist.py) to be better suited for distributed training and model serving.
-
-### Prepare model
-
-There is a delta between existing distributed mnist examples and what's needed to run well as a TFJob.
-
-Basically, we must:
-
-1. Add options in order to make the model configurable.
-1. Use `tf.estimator.train_and_evaluate` to enable model exporting and serving.
-1. Define serving signatures for model serving.
-
-The resulting model is [model.py](model.py).
-
 
 ## Defining your training workflow
 
