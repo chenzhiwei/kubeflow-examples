@@ -34,7 +34,7 @@ cd kf-app
 ### Deploy Minio
 
 ```
-docker run --name=minio --net=host -d -v /var/lib/minio:/data minio/minio:RELEASE.2018-10-25T01-27-03Z server /data
+docker run --name=minio --net=host -d -v /var/lib/minio:/data siji/minio server /data
 ```
 
 ### Get Minio key and secret
@@ -241,7 +241,7 @@ kubectl -n kubeflow patch service tf-hub-lb -p '{"spec": {"type": "NodePort"}}'
 kubectl -n kubeflow get service tf-hub-lb
 ```
 
-The default username and password are both `admin`.
+Use any username and password to login, such as `admin/admin`.
 
 Create a PV in order to bring up a Jupyter NoteBook:
 
