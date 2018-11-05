@@ -34,25 +34,11 @@ cd kf-app
 ### Deploy Minio
 
 ```
-docker run --name=minio --net=host -d -v /var/lib/minio:/data siji/minio server /data
+docker run --name=minio --net=host -e MINIO_ACCESS_KEY=minio -e MINIO_SECRET_KEY=minio123 -d -v /var/lib/minio:/data siji/minio server /data
 ```
 
-### Get Minio key and secret
+The Minio access key is `minio`, secret key is `minio123`.
 
-```
-cat /var/lib/minio/.minio.sys/config/config.json  | head
-
-{
-	"version": "31",
-	"credential": {
-		"accessKey": "I32VBSEQ713K5FW9Y9OD",
-		"secretKey": "WAAZL6kE59tG6Y5NpjnarNakmLts4CwaJEmR__La",
-		"expiration": "1970-01-01T00:00:00Z",
-		"status": "enabled"
-	},
-	"region": "",
-	"worm": "off",
-```
 
 ### Create Minio bucket
 
@@ -87,8 +73,8 @@ export NAMESPACE=kubeflow
 
 export S3_ENDPOINT=9.30.100.155:9000
 export AWS_ENDPOINT_URL=http://${S3_ENDPOINT}
-export AWS_ACCESS_KEY_ID=I32VBSEQ713K5FW9Y9OD
-export AWS_SECRET_ACCESS_KEY=WAAZL6kE59tG6Y5NpjnarNakmLts4CwaJEmR__La
+export AWS_ACCESS_KEY_ID=minio
+export AWS_SECRET_ACCESS_KEY=minio123
 export AWS_REGION=us-west-2
 export BUCKET_NAME=tfmnist
 export S3_USE_HTTPS=0
