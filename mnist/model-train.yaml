@@ -125,7 +125,6 @@ spec:
               replicas: 1
               template:
                 spec:
-                  serviceAccountName: tf-job-operator
                   containers:
                     - image: {{workflow.parameters.tf-model-image}}
                       name: tensorflow
@@ -168,7 +167,6 @@ spec:
               replicas: {{workflow.parameters.tf-worker}}
               template:
                 spec:
-                  serviceAccountName: tf-job-operator
                   containers:
                     - image: {{workflow.parameters.tf-model-image}}
                       name: tensorflow

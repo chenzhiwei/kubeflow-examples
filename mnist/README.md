@@ -29,6 +29,32 @@ cd kf-app
 ../kubeflow/scripts/kfctl.sh apply k8s
 ```
 
+### Create PV for vizier-db
+
+```
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: vizier-db
+spec:
+  capacity:
+    storage: 40Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  local:
+    path: /var/pv/vizier-db
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - 172.16.183.209
+```
+
 ## 3.Setup Minio
 
 ### Deploy Minio
@@ -62,14 +88,17 @@ chmod +x /usr/local/bin/argo
 
 ## 5.Create tf service account
 
+We will use `mnist` namespace for mnist model.
+
 ```
-kubectl -n kubeflow apply -f tf-user.yaml
+kubectl create ns mnist
+kubectl -n mnist apply -f tf-user.yaml
 ```
 
 ## 6.Create secret for workflow
 
 ```
-export NAMESPACE=kubeflow
+export NAMESPACE=mnist
 
 export S3_ENDPOINT=9.30.100.155:9000
 export AWS_ENDPOINT_URL=http://${S3_ENDPOINT}
@@ -114,11 +143,11 @@ Your training workflow should now be executing.
 You can verify and keep track of your workflow using the argo commands:
 
 ```
-$ argo -n kubeflow list
+$ argo -n ${NAMESPACE} list
 NAME                STATUS    AGE   DURATION
 tf-workflow-h7hwh   Running   1h    1h
 
-$ argo -n kubeflow get tf-workflow-h7hwh
+$ argo -n ${NAMESPACE} get tf-workflow-h7hwh
 ```
 
 After the STATUS to `Succeeded`, then you can use it.
@@ -138,7 +167,7 @@ pip install -r requirements.txt
 By default the workflow deploys our model via Tensorflow Serving. Included in this example is a client that can query your model and provide results:
 
 ```
-SERVICE_IP=$(kubectl -n kubeflow get service -l app=mnist-${JOB_NAME} -o jsonpath='{.items[0].spec.clusterIP}')
+SERVICE_IP=$(kubectl -n ${NAMESPACE} get service -l app=mnist-${JOB_NAME} -o jsonpath='{.items[0].spec.clusterIP}')
 TF_MODEL_SERVER_HOST=$SERVICE_IP TF_MNIST_IMAGE_PATH=data/7.png python mnist_client.py
 ```
 
@@ -218,13 +247,10 @@ You can also omit `TF_MNIST_IMAGE_PATH`, and the client will pick a random numbe
 
 ## 9.Bring JupyterHub up
 
-The jupyterhub is `tf-hub` statefulset under kubeflow namespace.
-
-Change the `tf-hub-lb` service type to NodePort, then you can access it jupyterhub throw NodePort.
+Change the `ambassador` service type to `NodePort`, then access JupyterHub throgh ambassador.
 
 ```
-kubectl -n kubeflow patch service tf-hub-lb -p '{"spec": {"type": "NodePort"}}'
-kubectl -n kubeflow get service tf-hub-lb
+kubectl -n kubeflow patch service ambassador -p '{"spec": {"type": "NodePort"}}'
 ```
 
 Use any username and password to login, such as `admin/admin`.
