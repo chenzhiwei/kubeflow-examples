@@ -315,7 +315,7 @@ There are various ways to monitor workflow/training job. In addition to using `k
 The Argo UI is useful for seeing what stage your worfklow is in:
 
 ```
-PODNAME=$(kubectl get pod -l app=argo-ui -n${NAMESPACE} -o jsonpath='{.items[0].metadata.name}')
+PODNAME=$(kubectl -n kubeflow get pod -l app=argo-ui -o jsonpath='{.items[0].metadata.name}')
 kubectl port-forward ${PODNAME} 8001:8001
 ```
 
@@ -326,7 +326,7 @@ You should now be able to visit [http://127.0.0.1:8001](http://127.0.0.1:8001) t
 Tensorboard is deployed just before training starts. To connect:
 
 ```
-PODNAME=$(kubectl get pod -l app=tensorboard-${JOB_NAME} -o jsonpath='{.items[0].metadata.name}')
+PODNAME=$(kubectl -n ${NAMESPACE} get pod -l app=tensorboard-${JOB_NAME} -o jsonpath='{.items[0].metadata.name}')
 kubectl port-forward ${PODNAME} 6006:6006
 ```
 
@@ -359,6 +359,8 @@ argo submit model-train.yaml -n ${NAMESPACE} --serviceaccount tf-user \
     -p job-name=${JOB_NAME} \
     -p tf-worker=${TF_WORKER} \
     -p model-train-steps=${MODEL_TRAIN_STEPS} \
+    -p s3-use-https=${S3_USE_HTTPS} \
+    -p s3-verify-ssl=${S3_VERIFY_SSL} \
     -p namespace=${NAMESPACE}
 ```
 
