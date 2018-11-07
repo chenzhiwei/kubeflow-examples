@@ -162,7 +162,17 @@ apt install python-pip python-setuptools --no-install-recommends
 pip install -r requirements.txt
 ```
 
-### Submit and query result
+### Web: Mnist Digit Reader
+
+```
+cd mnist-webapp
+SERVICE_IP=$(kubectl -n ${NAMESPACE} get service -l app=mnist-${JOB_NAME} -o jsonpath='{.items[0].spec.clusterIP}')
+TF_MODEL_SERVER_HOST=$SERVICE_IP python app.py
+```
+
+Then open browser with url: http://your-host-ip:5000
+
+### Cli: Submit and query result
 
 By default the workflow deploys our model via Tensorflow Serving. Included in this example is a client that can query your model and provide results:
 
