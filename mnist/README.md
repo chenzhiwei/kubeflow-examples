@@ -118,7 +118,7 @@ kubectl -n ${NAMESPACE} create secret generic aws-creds --from-literal=awsAccess
 ```
 export S3_DATA_URL=s3://${BUCKET_NAME}/data/mnist/
 export S3_TRAIN_BASE_URL=s3://${BUCKET_NAME}/models
-export JOB_NAME=myjob-$(uuidgen  | cut -c -5 | tr '[:upper:]' '[:lower:]')
+export JOB_NAME=myjob-zhiwei
 export TF_MODEL_IMAGE=siji/mnist-model:v1.11.0
 export TF_WORKER=3
 export MODEL_TRAIN_STEPS=200
