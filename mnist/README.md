@@ -115,6 +115,8 @@ kubectl -n ${NAMESPACE} create secret generic aws-creds --from-literal=awsAccess
 
 ## 7.Submit training workflow
 
+NOTE: By default this training workflow will enable model serving, you can disable model serving by passing `-p model-serving=false` to this workflow. And follow step 8 to enable model serving.
+
 ```
 export S3_DATA_URL=s3://${BUCKET_NAME}/data/mnist/
 export S3_TRAIN_BASE_URL=s3://${BUCKET_NAME}/models
@@ -153,7 +155,17 @@ $ argo -n ${NAMESPACE} get tf-workflow-h7hwh
 After the STATUS to `Succeeded`, then you can use it.
 
 
-## 8.Using Tensorflow serving
+## 8.Submit serving workflow[optional]
+
+**NOTE: Please only run this when you disable model serving in step 7.**
+
+```
+argo -n ${NAMESPACE} list # get the workflow name
+WORKFLOW=<the workflow name>
+argo submit model-deploy.yaml -n ${NAMESPACE} -p workflow=${WORKFLOW} --serviceaccount=tf-user
+```
+
+## 9.Using Tensorflow serving
 
 ### Install client requirements
 
@@ -255,7 +267,7 @@ Your model says the above number is... 7!
 You can also omit `TF_MNIST_IMAGE_PATH`, and the client will pick a random number from the mnist test data. Run it repeatedly and see how your model fares!
 
 
-## 9.Bring JupyterHub up
+## 10.Bring JupyterHub up
 
 Change the `ambassador` service type to `NodePort`, then access JupyterHub throgh ambassador.
 
@@ -342,14 +354,6 @@ kubectl port-forward ${PODNAME} 6006:6006
 
 Tensorboard can now be accessed at [http://127.0.0.1:6006](http://127.0.0.1:6006).
 
-### Disabling Serving
-
-Model serving can be turned off by passing in `-p model-serving=false` to the `model-train.yaml` workflow. Then if you wish to serve your model after training, use the `model-deploy.yaml` workflow. Simply pass in the desired finished argo workflow as an argument:
-
-```
-WORKFLOW=<the workflowname>
-argo submit model-deploy.yaml -n ${NAMESPACE} -p workflow=${WORKFLOW} --serviceaccount=tf-user
-```
 
 ## Submitting new argo jobs
 
